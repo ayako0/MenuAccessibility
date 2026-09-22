@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accessible Keyboard Menu</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            gap: 2rem;
+        }
+
+        .container {
+            position: relative;
+            height: 250px;
+        }
+
+        /* Menu Styles */
+        .menu-btn {
+            background-color: white;
+            border: 2px solid #d1d5db;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-btn:focus, .menu-btn:hover {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 0.5rem;
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            padding: 0.5rem 0;
+            z-index: 10;
+        }
+
+        .dropdown-menu.open {
+            display: block;
+        }
+
+        .menu-item {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            background: none;
+            border: none;
+            font-size: 0.95rem;
+            color: var(--text-color);
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        /* Focus state for both keyboard and virtual navigation */
+        .menu-item:focus, .menu-item.focused {
+            background-color: var(--primary-color);
+            color: white;
+            outline: none;
+        }
+
+        /* On-Screen Keyboard Styles */
+        .os-keyboard {
+            background-color: #1e293b;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            display: flex;
+            gap: 0.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .key-btn {
+            background-color: #334155;
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            min-width: 60px;
+            transition: background 0.1s, transform 0.1s;
+            user-select: none;
+        }
+
+        .key-btn:active, .key-btn.active {
+            background-color: var(--primary-color);
+            transform: scale(0.95);
+        }
+
+        .key-btn.wide {
+            min-width: 100px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menu Section -->
+    <div class="container">
+        <button class="menu-btn" id="menuButton" aria-haspopup="true" aria-expanded="false">Actions Menu</button>
+        <div class="dropdown-menu" id="dropdownMenu" role="menu">
+            <button class="menu-item" role="menuitem">Profile Settings</button>
+            <button class="menu-item" role="menuitem">Account Analytics</button>
+            <button class="menu-item" role="menuitem">Subscription Plans</button>
+            <button class="menu-item" role="menuitem">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- On-Screen Keyboard Section -->
+    <div class="os-keyboard">
+        <button class="key-btn wide" data-key="Enter">ENTER</button>
+        <button class="key-btn" data-key="ArrowUp">▲ UP</button>
+        <button class="key-btn" data-key="ArrowDown">▼ DOWN</button>
+    </div>
+
+    <script>
+        const menuButton = document.getElementById('menuButton');
+        const dropdownMenu = document.getElementById('dropdownMenu');
+        const menuItems = Array.from(dropdownMenu.querySelectorAll('.menu-item'));
+        let currentFocusIndex = -1;
+
+        // --- Core Menu Logic ---
+
+        function openMenu() {
+            dropdownMenu.classList.add('open');
+            menuButton.setAttribute('aria-expanded', 'true');
+            focusItem(0); // Focus first item on open
+        }
+
+        function closeMenu() {
+            dropdownMenu.classList.remove('open');
+            menuButton.setAttribute('aria-expanded', 'false');
+            removeVisualFocus();
+            currentFocusIndex = -1;
+            menuButton.focus();
+        }
+
+        function isMenuOpen() {
+            return dropdownMenu.classList.contains('open');
+        }
+
+        function focusItem(index) {
+            removeVisualFocus();
+            currentFocusIndex = index;
+            
+            if (currentFocusIndex >= menuItems.length) currentFocusIndex = 0;
+            if (currentFocusIndex < 0) currentFocusIndex = menuItems.length - 1;
+
+            const targetItem = menuItems[currentFocusIndex];
+            targetItem.classList.add('focused');
+            targetItem.focus();
+        }
+
+        function removeVisualFocus() {
+            menuItems.forEach(item => item.classList.remove('focused'));
+        }
+
+        // --- Central Action Router ---
+        // Handles both real physical keys and virtual on-screen keys uniformly
+        function handleNavigationAction(key) {
+            if (key === 'Enter') {
+                if (!isMenuOpen()) {
+                    if (document.activeElement === menuButton) {
+                        openMenu();
+                    }
+                } else {
+                    // If menu is open, select the currently focused item
+                    if (currentFocusIndex >= 0) {
+                        alert(`Selected: ${menuItems[currentFocusIndex].textContent}`);
+                        closeMenu();
+                    }
+                }
+            } else if (key === 'ArrowDown') {
+                if (isMenuOpen()) {
+                    focusItem(currentFocusIndex + 1);
+                }
+            } else if (key === 'ArrowUp') {
+                if (isMenuOpen()) {
+                    focusItem(currentFocusIndex - 1);
+                }
+            }
+        }
+
+        // --- Event Listeners: Physical Keyboard ---
+        window.addEventListener('keydown', (e) => {
+            if (['Enter', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                // Prevent scrolling when using arrow keys inside the opened app
+                if (isMenuOpen() || document.activeElement === menuButton) {
+                    e.preventDefault();
+                }
+                
+                // Visual feedback on virtual keyboard when physical keys are pressed
+                const virtualKey = document.querySelector(`.key-btn[data-key="${e.key}"]`);
+                if (virtualKey) virtualKey.classList.add('active');
+
+                handleNavigationAction(e.key);
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const virtualKey = document.querySelector(`.key-btn[data-key="${e.key}"]`);
+            if (virtualKey) virtualKey.classList.remove('active');
+        });
+
+        // --- Event Listeners: On-Screen Keyboard ---
+        document.querySelector('.os-keyboard').addEventListener('click', (e) => {
+            const button = e.target.closest('.key-btn');
+            if (!button) return;
+
+            const simulatedKey = button.getAttribute('data-key');
+            handleNavigationAction(simulatedKey);
+        });
+
+        // --- Mouse Fallbacks & Accessibility ---
+        menuButton.addEventListener('click', () => {
+            if (isMenuOpen()) closeMenu();
+            else openMenu();
+        });
+
+        // Close menu if user clicks anywhere outside of it
+        document.addEventListener('click', (e) => {
+            if (!menuButton.contains(e.target) && !dropdownMenu.contains(e.target) && !e.target.closest('.os-keyboard')) {
+                closeMenu();
+            }
+        });
+    </script>
+</body>
+</html>
